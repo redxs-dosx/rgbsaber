@@ -1,6 +1,6 @@
-# #{name}
+# #{RGBsaber}
 
-#{description}
+#{Gives you rgb notes and sabers}
 
 Use `qpm s build` to build
 Same goes for `qpm s copy` and `qpm s qmod`

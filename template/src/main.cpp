@@ -1,6 +1,8 @@
 #include "main.hpp"
 
 #include "scotland2/shared/modloader.h"
+#include <chrono>
+#include <cmath>
 
 static modloader::ModInfo modInfo{MOD_ID, VERSION, 0};
 // Stores the ID and version of our mod, and is sent to
@@ -31,6 +33,18 @@ MOD_EXTERN_FUNC void late_load() noexcept {
   il2cpp_functions::Init();
 
   PaperLogger.info("Installing hooks...");
+  // Hook ColorManager::ColorForType to return a time-based rainbow color
+  MAKE_HOOK_FIND_CLASS(ColorManager_ColorForType, "GlobalNamespace", "ColorManager", "ColorForType", UnityEngine::Color,
+                       GlobalNamespace::ColorManager* self, GlobalNamespace::ColorType colorType) {
+    // Use steady clock to create a hue that cycles over time
+    using namespace std::chrono;
+    static const double speed = 0.2; // cycles per second
+    double t = duration_cast<duration<double>>(steady_clock::now().time_since_epoch()).count();
+    float hue = fmod(static_cast<float>(t * speed), 1.0f);
+    return UnityEngine::Color::HSVToRGB(hue, 1.0f, 1.0f);
+  }
+
+  INSTALL_HOOK(PaperLogger, ColorManager_ColorForType);
 
   PaperLogger.info("Installed all hooks!");
 }

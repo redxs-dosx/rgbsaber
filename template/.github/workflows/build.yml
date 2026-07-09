@@ -34,8 +34,8 @@ on:
         - 'fix/*'
 
 env:
-    module_id: "#{id}"
-    qmod_name: "#{name}"
+    module_id: "#{rgbsaber}"
+    qmod_name: "#{RGBsaber}"
 
 jobs:
   build:
@@ -107,14 +107,4 @@ jobs:
     - name: Upload release artifacts
       if: startsWith(github.ref, 'refs/tags/v')
       id: upload_file_release
-      uses: softprops/action-gh-release@v0.1.15
-      with:
-        tag_name: ${{ github.event.inputs.version }}
-        draft: true
-        generate_release_notes: true
-        files: |
-          ./build/${{ steps.libname.outputs.NAME }}
-          ./build/debug_${{ steps.libname.outputs.NAME }}
-          ./${{ env.qmod_name }}.qmod
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/acti

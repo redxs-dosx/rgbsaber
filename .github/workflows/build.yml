@@ -1,0 +1,98 @@
+name: NDK build (template)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - 'main'
+    paths-ignore:
+      - '**.yml'
+      - '!.github/workflows/build.yml'
+      - '**.json'
+      - '!template/qpm.json'
+      - '!template/mod.template.json'
+      - '**.txt'
+      - '!template/CMakeLists.txt'
+      - '**.ps1'
+      - '!template/scripts/build.ps1'
+      - '!template/scripts/createqmod.ps1'
+      - '**.md'
+      - '.gitignore'
+
+env:
+    module_id: "rgbsaber"
+    qmod_name: "RGBsaber"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      name: Checkout
+      with:
+        submodules: true
+        lfs: true
+
+    - uses: seanmiddleditch/gha-setup-ninja@v3
+
+    - name: Setup canary NDK
+      id: setup-ndk
+      uses: ./template/.github/actions/canary-ndk
+
+    - name: Create ndkpath.txt
+      run: |
+        echo ${{ steps.setup-ndk.outputs.ndk-path }} > ${GITHUB_WORKSPACE}/template/ndkpath.txt
+        cat ${GITHUB_WORKSPACE}/template/ndkpath.txt
+
+    - name: Setup qpm
+      uses: Fernthedev/qpm-action@main
+      with:
+        workflow_token: ${{ secrets.GITHUB_TOKEN }}
+        restore: true
+        cache: true
+        publish: false
+
+    - name: Build & Create Qmod
+      working-directory: template
+      run: |
+        qpm s qmod
+
+    - name: Get Library Name
+      id: libname
+      run: |
+        cd template/build/
+        pattern="lib${module_id}*.so"
+        files=( $pattern )
+        echo "NAME=${files[0]}" >> ${GITHUB_OUTPUT}
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.libname.outputs.NAME }}
+        path: template/build/${{ steps.libname.outputs.NAME }}
+        if-no-files-found: error
+
+    - name: Upload qmod artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{env.qmod_name}}.qmod
+        path: template/${{ env.qmod_name }}.qmod
+        if-no-files-found: error
+
+    - name: Upload release artifacts
+      if: startsWith(github.ref, 'refs/tags/v')
+      id: upload_file_release
+      uses: softprops/action-gh-release@v0.1.15
+      with:
+        tag_name: ${{ github.event.inputs.version }}
+        draft: true
+        generate_release_notes: true
+        files: |
+          template/build/${{ steps.libname.outputs.NAME }}
+          template/build/debug_${{ steps.libname.outputs.NAME }}
+          template/${{ env.qmod_name }}.qmod
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
